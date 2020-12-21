@@ -50,7 +50,7 @@ lemma eq : x * x + y * y = z * z := h
 @[symm]
 lemma symm :
   pythagorean_triple y x z :=
-by rwa [pythagorean_triple_comm]
+begin[ntac] rwa [pythagorean_triple_comm], trace_state end
 
 /-- A triple is still a triple if you multiply `x`, `y` and `z`
 by a constant `k`. -/
@@ -588,9 +588,10 @@ theorem classification :
   ∃ k m n, ((x = k * (m ^ 2 - n ^ 2) ∧ y = k * (2 * m * n)) ∨
             (x = k * (2 * m * n) ∧ y = k * (m ^ 2 - n ^ 2)))
           ∧ (z = k * (m ^ 2 + n ^ 2) ∨ z = - k * (m ^ 2 + n ^ 2)) :=
-begin
+begin[ntac]
   split,
-  { intro h,
+  trace_state,
+  { intro h,trace_state,
     obtain ⟨k, m, n, H⟩ := h.classified,
     use [k, m, n],
     rcases H with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩,
@@ -604,6 +605,7 @@ begin
       simpa using eq_or_eq_neg_of_pow_two_eq_pow_two _ _ this } },
   { rintro ⟨k, m, n, ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩, rfl | rfl⟩;
     delta pythagorean_triple; ring }
+    ,trace_state
 end
 
 end pythagorean_triple

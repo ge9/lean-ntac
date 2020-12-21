@@ -51,6 +51,8 @@ example (a b c : nat) (h_1 : a = g b) (h_2 : a = b) : p (f (g a) a) b :=
 begin[ntac] rsimp, apply pax, trace_state end
 
 
+example (p q : Prop) (hp : p) (hq : q) : p ∨ q :=
+begin[ntac] sorry, trace_state end
 example (p q : Prop) (hp : p) (hq : q) : p ∧ q :=
 begin[ntac] trace_state, skiptgt, trace_state, split; assumption, trace_state end
 example (p q : Prop) (hp : p) (hq : q) : p ∧ q :=
@@ -76,4 +78,4 @@ example (a b c : nat) (h_1 : a = g b) (h_2 : a = b) : p (f (g a) a) b :=
 begin   rsimp; apply pax end
 def c := tt
 def d := tt
-
+#reduce (``(c∧d))

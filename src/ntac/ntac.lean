@@ -1,3 +1,4 @@
+import ntac.goal_tree
 -- @[reducible] meta def ntac := tactic
 def mkprf := list string → string
 meta def test (o: interaction_monad string (list string)): interaction_monad string string :=
@@ -16,96 +17,17 @@ rr ← list2monad rrr,
 pure (hh::rr)
 end
 
-meta inductive gost : Type
-| unres : expr → gost
-| exact : expr → gost
-| assumption : expr → gost
-| rewrite : gost → gost
-| simp : gost → gost
-| skip : gost → gost
-| admit : gost
-| done : gost
-| apply : expr → list (gost × expr) → gost
-| case : list (gost × expr) → gost
-| init : list (gost × expr) → gost
-| andthen : gost →list (expr × gost) → gost
-| unres_andthen : expr → gost
-
--- meta def juststr (s: string): gost := gost.tact [([], λ _,s)]
--- meta def gost1 (g: gost) (f: string → string): gost := gost.tact [g] (λ p, 
--- match p with 
--- | h::[]  := f h
--- |_ := "error!"
--- end)
--- meta def addtact (g: gost) (s: string) := gost1 g (λ st, st ++ s)
-
-meta def replc_unres :expr → gost → gost → gost := 
-λ e g_new g_org,
-match g_org with
-| gost.unres e2 := if e = e2 then g_new else g_org
-| gost.unres_andthen e2 := if e = e2 then g_new else g_org
-| gost.skip g := gost.skip $ replc_unres e g_new g
-| gost.simp g := gost.skip $ replc_unres e g_new g
-| gost.case gl := gost.case $ list.map (λ p,let (a, b):= p in ((replc_unres e g_new) a, b)) gl
-| gost.init gl := gost.init $ list.map (λ p,let (a, b):= p in ((replc_unres e g_new) a, b)) gl
-| gost.apply ee gl := gost.apply ee $ list.map (λ p,let (a, b):= p in ((replc_unres e g_new) a, b)) gl
-| gost.andthen g gl := gost.andthen g $ list.map (λ p,let (a, b):= p in (a, (replc_unres e g_new) b)) gl
-| _ := g_org
-end
-
 meta def initgoals (gl: list expr): mkprf := 
 λ lst1, 
 let lst := list.zip_with (λ a b, to_string a ++ "\n" ++ b) gl lst1 in
 let gls := list.foldl (λ a b, a ++ "\n" ++ b) "initial goals:" lst in
 gls
 
-@[reducible] meta def ntac := interaction_monad (tactic_state × gost)
-
+@[reducible] meta def ntac := interaction_monad (tactic_state × goal_tree)
 
 -- @[reducible] meta def ntac := (interaction_monad tactic_state) × string
 open tactic----------------------------------------------------------------------------------------------------------------------------------------------------
 namespace ntac
-
-meta def gost_to_string : gost → string :=
-λ g, match g with
-| gost.unres e :=  " *unres* :"++e.to_string
-| gost.unres_andthen e :=  " *unres andthen* :"++e.to_string
-| gost.admit := "sorry"
-| gost.done := "done"
-| gost.exact e:= "exact " ++e.to_string 
-| gost.assumption e:= "assumption " ++e.to_string 
-| gost.rewrite g:= "rw (" ++ gost_to_string g ++")"
-| gost.simp g:= "simp (" ++ gost_to_string g ++")"
-| gost.skip g:= "skip (" ++ gost_to_string g ++ ")"
-| gost.apply ee gl := 
-let sl := @list.map (gost × expr) string (λ p, let (a, b) := p in "("++(to_string b) ++":" ++(gost_to_string a)++")") gl in
-let str := list.foldl (λ acc s, acc ++", "++ s) ("apply <" ++ee.to_string ++"> and from[") sl in
-str ++ "]"
-| gost.case gl := 
-let sl := @list.map (gost × expr) string (λ p, let (a, b) := p in "("++(to_string b) ++":" ++(gost_to_string a)++")") gl in
-let str := list.foldl (λ acc s, acc ++", "++ s) "case[" sl in
-str ++ "]"
-  
-| gost.init gl := 
-let sl := @list.map (gost × expr) string (λ p, let (a, b) := p in "("++(to_string b) ++":" ++(gost_to_string a)++")") gl in
-let str := list.foldl (λ acc s, acc ++", "++ s) "init[" sl in
-str ++ "]"
-| gost.andthen tac1 tac2 :=
-let str1 := gost_to_string tac1 in
-let sl := @list.map (expr × gost) string (λ p, let (a, b) := p in "("++(to_string a) ++" → " ++(gost_to_string b)++")") tac2 in
-let str := list.foldl (λ acc s, acc ++", "++ s) ("do {"++str1++"} and then{") sl in
-str ++ "}"
-end
-
-meta def for_andthen : gost → gost :=
-λ g, match g with
-| gost.unres e := gost.unres_andthen e
-| _ := g
-end
-
-meta instance : has_to_format gost :=
-⟨λ g,to_fmt $ gost_to_string g⟩
-
 
 meta def henkan {α} (t: tactic α): ntac α :=
 λ ts,
@@ -114,7 +36,7 @@ let res := t tac in
 let str := ts.2 in
 match res with 
 | (result.success a s)       := (result.success a (s, str)) 
-| (result.exception t ref s) := (result.exception t ref (s,gost.admit))
+| (result.exception t ref s) := (result.exception t ref (s,goal_tree.admit))
 end
 
 -- meta def henkan1 {α} (s_add: string) (t: tactic α) : ntac α :=
@@ -124,7 +46,7 @@ end
 -- let str := ts.2 in
 -- match res with 
 -- | (result.success a s)       := (result.success a (s, (addtact str s_add)))
--- | (result.exception t ref s) := (result.exception t ref (s,gost.admit))
+-- | (result.exception t ref s) := (result.exception t ref (s,goal_tree.admit))
 -- end
 
 -- meta def henkan1_base {α} (s_add: list string → string) (t: tactic α) : ntac α :=
@@ -133,8 +55,8 @@ end
 -- let res := t tac in
 -- let str := ts.2 in
 -- match res with 
--- | (result.success a s)       := (result.success a (s, (gost.tact [str] s_add)))
--- | (result.exception t ref s) := (result.exception t ref (s,gost.admit))
+-- | (result.success a s)       := (result.success a (s, (goal_tree.tact [str] s_add)))
+-- | (result.exception t ref s) := (result.exception t ref (s,goal_tree.admit))
 -- end
 
 
@@ -142,9 +64,9 @@ end
 meta def henkan2 {α} (t: ntac α) : tactic α :=
 do goals ← get_goals,
 exprs ← monad.sequence $ list.map infer_type goals,
-let goals_gost := list.map gost.unres goals in
+let goals_goal_tree := list.map goal_tree.unres goals in
 λ sa,
-let res := t (sa, gost.init $ list.zip goals_gost exprs) in
+let res := t (sa, goal_tree.init $ list.zip goals_goal_tree exprs) in
 match res with 
 | (result.success a s)       := (result.success a s.1) 
 | (result.exception t ref s) := (result.exception t ref s.1)
@@ -156,22 +78,21 @@ end
 -- result.success a (tst, addtact str s_add)
 
 
-meta def change_gost (f:gost → gost) : ntac unit := 
+meta def change_goal_tree (f:goal_tree → goal_tree) : ntac unit := 
 λ sa,
 let (tst, str) := sa in
 result.success () (tst, f str)
 
-meta def set_gost (g: gost) : ntac unit :=
+meta def set_goal_tree (g: goal_tree) : ntac unit :=
 λ sa,
 let (tst, _) := sa in
 result.success () (tst, g)
 
-meta def get_gost: ntac gost := 
+meta def get_goal_tree: ntac goal_tree := 
 λ sa,
 let (tst, str) := sa in result.success str (tst, str)
 
-meta def replc_ntac (e:expr) (g: gost) := change_gost $ replc_unres e g
-
+meta def replc_ntac (e:expr) (g: goal_tree) := change_goal_tree $ replc_unres e g
 
 meta instance : interactive.executor ntac :=
 { config_type := unit,
@@ -243,4 +164,13 @@ meta def all_goals' (tac : ntac unit) : ntac unit :=
 do gs ←  henkan $ get_goals,
    all_goals'_core tac gs []
 
+meta def skip : ntac unit :=
+result.success ()
+
+
+meta def try {α}(t : ntac α) : ntac unit := λ s,
+match t s with
+| (result.exception _ _ _) := result.success () s
+| (result.success _ s') := result.success () s'
+end
 end ntac
