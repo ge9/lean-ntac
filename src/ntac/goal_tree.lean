@@ -56,6 +56,10 @@ meta def to_string2 : expr → string :=
 | `(%%a ∧ %%b) := (to_string a)++"∧"++(to_string b)
 | _ := to_string e
 end
+
+meta def goal_tree_to_semantic_tree : goal_tree → semantic_tree :=
+
+
 meta def goal_tree_to_string : goal_tree → string :=
 λ g, match g with
 | goal_tree.unres e :=  " *unres* :"++e.to_string

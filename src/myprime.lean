@@ -36,3 +36,23 @@ split,
 T,{assumption}
 ,trace_state
 end
+
+theorem exists_infinite_primes4 (n : ℕ) : ∃ p, n ≤ p ∧ prime p :=
+begin[ntac]
+let p := min_fac (n! + 1),trace_state,
+existsi p,trace_state,
+  have f1 : n! + 1 ≠ 1,
+  trace_state,T,
+  from (ne_of_gt $ succ_lt_succ $ factorial_pos n),
+  trace_state,
+  have pp : prime p, from min_fac_prime f1,
+split,
+{ apply le_of_not_ge,
+  intro h,
+  have h₁ : p ∣ n!, from dvd_factorial (min_fac_pos _) h,
+  have h₂ : p ∣ 1, from (nat.dvd_add_iff_right h₁).2 (min_fac_dvd _),
+  from  prime.not_dvd_one pp h₂,
+},
+T,{assumption}
+,trace_state
+end
