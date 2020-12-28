@@ -43,8 +43,8 @@ meta def get_goal_info: ntac goal_info :=
 λ sa,
 let (tst, str) := sa in result.success str (tst, str)
 
-meta def replc_ntac (e:expr) (g: goal_info) := change_goal_info $ replc_unres e g
-meta def replc_head (e:expr) (g: goal_info) := change_goal_info $ replc_unres e g
+meta def replc_ntac (e:expr) (g: goal_tree) := change_goal_info $ replc_unres e g
+meta def replc_head (e:expr) (g: goal_tree) := change_goal_info $ replc_unres e g
 
 meta instance : interactive.executor ntac :=
 { config_type := unit,

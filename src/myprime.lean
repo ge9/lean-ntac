@@ -37,15 +37,17 @@ T,{assumption}
 ,trace_state
 end
 
+
 theorem exists_infinite_primes4 (n : ℕ) : ∃ p, n ≤ p ∧ prime p :=
 begin[ntac]
+trace_goals_type,
 let p := min_fac (n! + 1),trace_state,
-existsi p,trace_state,
+existsi p,trace_state,trace_proof,
   have f1 : n! + 1 ≠ 1,
   trace_state,T,
   from (ne_of_gt $ succ_lt_succ $ factorial_pos n),
-  trace_state,
-  have pp : prime p, from min_fac_prime f1,
+  trace_proof,trace_state,
+  have pp : prime p, from min_fac_prime f1,trace_proof,
 split,
 trace_state,
 { apply le_of_not_ge,

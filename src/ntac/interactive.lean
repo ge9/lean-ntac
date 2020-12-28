@@ -15,7 +15,7 @@ meta def get_type_info (g: expr) : ntac type_info :=
 do type ← # infer_type g,
 kind ← # infer_type type, return ⟨type,kind⟩ 
 
-meta def get_goal_info (g: expr) : ntac goal_info :=
+meta def get_goal_info_unres (g: expr) : ntac goal_info :=
 do type ← # infer_type g,
 kind ← # infer_type type, return $ goal_info.mk ⟨type,kind⟩ (goal_tree.unres g) 
 meta def getgoal1 : ntac expr := 
@@ -166,7 +166,7 @@ meta def by_cases : parse cases_arg_p → ntac unit
 --# tactic.rsimp,tg2 ← getgoal1,replc_ntac tg $ goal_tree.simp $ goal_tree.unres tg2
 
 @[inline] meta def readmy : ntac format :=
-do gt ← get_goal_tree,
+do gt ← get_goal_info,
 # pp gt
 
 @[inline] meta def read2 : ntac tactic_state :=
@@ -183,9 +183,14 @@ meta def trace_goals : ntac unit :=
 do gs ← # get_goals,
   let gs_str := list.map to_string gs,
   trace $ string.join gs_str
+meta def trace_goals_type : ntac unit :=
+do gs ← # get_goals,
+  gt_str ← # monad.sequence $ list.map infer_type gs,
+  let t_str := list.map to_string gt_str,
+  trace $ string.join t_str
 meta def trace_proof : ntac unit := 
-do gt ← get_goal_tree,
-trace $ goal_tree_to_format2 gt
+do gt ← get_goal_info,
+trace $ goal_info_to_format2 gt
 
 meta def trace_state : ntac unit := 
 do s ← readmy,
@@ -265,8 +270,8 @@ do tg ← getgoal1,
 e ← # tactic.assert h t,
 typeof ← # infer_type t,
 tg1::tg2::_ ← henkan get_goals,
-tgi1 ← get_goal_info tg1,
-tgi2 ← get_goal_info tg2,
+tgi1 ← get_goal_info_unres tg1,
+tgi2 ← get_goal_info_unres tg2,
 replc_ntac tg $ goal_tree.willhave ⟨h,t,typeof⟩ tgi1 tgi2, return e
 
 meta def assertv (h : name) (t : expr) (v : expr) : ntac expr := 
@@ -307,8 +312,8 @@ e ← # tactic.assert h t,
 typeof ← # infer_type t,
 # tactic.swap,
 tg1::tg2::_ ← henkan get_goals,
-tgi1 ← get_goal_info tg1,
-tgi2 ← get_goal_info tg2,
+tgi1 ← get_goal_info_unres tg1,
+tgi2 ← get_goal_info_unres tg2,
 replc_ntac tg $ goal_tree.suffice ⟨h,t,typeof⟩ tgi1 tgi2, return e
 
 meta def suffice_aux  (h : parse ident?) (t : parse (tk ":" *> texpr)?) : ntac expr :=
@@ -340,8 +345,8 @@ meta def define  (h : name) (t : expr) : ntac expr :=
 do tg ← getgoal1,
 e ← # tactic.define h t,
 tg1::tg2::_ ← henkan get_goals,
-tgi1 ← get_goal_info tg1,
-tgi2 ← get_goal_info tg2,
+tgi1 ← get_goal_info_unres tg1,
+tgi2 ← get_goal_info_unres tg2,
 replc_ntac tg $ goal_tree.willdefine e tgi1 tgi2, return e
 
 meta def let_aux (h : parse ident?) (q₁ : parse (tk ":" *> texpr)?) (q₂ : parse $ (tk ":=" *> texpr)?) : ntac expr :=
@@ -398,19 +403,21 @@ meta def by_contra (n : parse ident?) : ntac unit := by_contradiction n
 
 meta def seq' (tac1 : ntac unit) (tac2 : ntac unit) : ntac unit :=
 do g::gs ← henkan get_goals,
-   goal_trees_bak ← get_goal_tree,
+   goal_trees_bak ← get_goal_info,
    # set_goals [g],
-   set_goal_tree $ goal_tree.unres g,
+   unr ← get_goal_info_unres g,
+   set_goal_info unr,
    tac1,
-   goal_tree1 ← get_goal_tree,
+   goal_tree1 ← get_goal_info,
    gs ← # get_goals,
    l ← getgoalinfos,
-   set_goal_tree $ goal_tree.andthen goal_tree1 $ list.zip gs l,
+   --set_goal_info $ goal_tree.andthen goal_tree1 $ list.zip gs l,
+   set_goal_info $ replc_unres g (goal_tree.andthen goal_tree1 $ list.zip gs l) goal_trees_bak,
    all_goals' tac2,
-   goal_trees_new ← get_goal_tree,
+   --goal_trees_new ← get_goal_info,
    gs' ← henkan get_goals,
-   # set_goals (gs' ++ gs),
-   set_goal_tree $ replc_unres g goal_trees_new goal_trees_bak
+   # set_goals (gs' ++ gs)
+   --set_goal_info $ replc_unres g goal_trees_new goal_trees_bak
 
 meta instance : has_andthen (ntac unit) (ntac unit) (ntac unit) :=
 ⟨seq'⟩

@@ -7,6 +7,7 @@ with S_ja : S → string
 | (S.Expr e) := e.to_string
 | (S.PredVP np vp) := NP_ja np ++ "は" ++ VP_ja vp
 | S._trivial := "自明"
+| S._unresolved := "未解決"
 | (S.Imp vp) := VP_ja vp
 with NP_ja : NP → string
 | (NP.EmbedS s) := S_ja s ++ "であること"
@@ -28,5 +29,6 @@ with Subj_ja : Subj → string
 with Adv_ja : Adv → string
 | (Adv.Subjs subj s) := Subj_ja subj ++ S_ja s
 | (Adv._from np):= NP_ja np ++ "より"
-| _hence := "したがって"
-| _from_assum := "仮定より"
+| Adv._hence := "したがって"
+| Adv._from_assum := "仮定より"
+| Adv._trivially := "明らかに"

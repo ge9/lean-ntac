@@ -32,13 +32,21 @@ with goal_tree : Type
 | apply : expr → list goal_info → goal_tree
 | case : list goal_info → goal_tree
 | init : goal_info → goal_tree
-| andthen : goal_tree →list (expr × goal_info) → goal_tree
+| andthen : goal_info →list (expr × goal_info) → goal_tree
+
+meta def destruct_gi (gi: goal_info) : (type_info × goal_tree) :=
+match gi with goal_info.mk ti gt :=(ti,gt) end
+
+prefix `##`:30 := destruct_gi
 
 meta def replc_unres :expr → goal_tree → goal_info → goal_info := 
-λ e g_new g_org,
-let rep_info : goal_info → goal_info := (λ gi, match gi with | goal_info.mk ty g := goal_info.mk ty (replc_unres e g_new g) end)
-in
-match g_org with
+λ e g_new gi_org,
+match gi_org  with
+| goal_info.mk ty g_org :=
+let rep_info : goal_info → goal_info := replc_unres e g_new
+--(λ gi, match gi with | goal_info.mk ty g := goal_info.mk ty (replc_unres e g_new g) end)
+ in
+let gt_new := match g_org with
 | goal_tree.unres e2 := if e = e2 then g_new else g_org
 | goal_tree.unres_andthen e2 := if e = e2 then g_new else g_org
 | goal_tree.skip g := goal_tree.skip $ rep_info g
@@ -59,6 +67,8 @@ match g_org with
 | goal_tree.define edef eval g :=  goal_tree.define edef eval $ rep_info g
 | goal_tree.willdefine e g1 g2 :=  goal_tree.willdefine e (rep_info g1) (rep_info g2)
 | _ := g_org
+end in 
+goal_info.mk ty gt_new
 end
 
 meta def to_string2 : expr → string :=
@@ -66,35 +76,38 @@ meta def to_string2 : expr → string :=
 | `(%%a ∧ %%b) := (to_string a)++"∧"++(to_string b)
 | _ := to_string e
 end
-
-meta def goal_tree_to_semantic_tree : goal_tree → semantic_tree :=
-λ g, match g with
+meta instance : inhabited goal_info := ⟨goal_info.mk ⟨expr.var 1, expr.var 1⟩ goal_tree.admit⟩
+meta def goal_info_to_semantic_tree : goal_info → tactic semantic_tree :=
+λ g, let (ti,gt) := ## g in
+do 
+match gt with
 | goal_tree.unres _ := semantic_tree.unresolved
 | goal_tree.unres_andthen _ := semantic_tree.unresolved
 | goal_tree.admit := semantic_tree.unresolved
-| goal_tree.intro (n, e) (goal_info.mk a g) := semantic_tree.assume_prop e $ goal_tree_to_semantic_tree g
-| goal_tree.have_ ⟨n,t,k,v⟩ (goal_info.mk a g) := semantic_tree.have_exact t $ goal_tree_to_semantic_tree g
-| goal_tree.define edef eval (goal_info.mk a g) := semantic_tree.assume_val edef eval $ goal_tree_to_semantic_tree g
-| goal_tree.willhave ne (goal_info.mk a newg) (goal_info.mk b oldg) := semantic_tree.have_from (goal_tree_to_semantic_tree newg) (goal_tree_to_semantic_tree oldg) 
-| goal_tree.suffice ⟨n,t,k⟩ (goal_info.mk a newg) (goal_info.mk b oldg) := semantic_tree.suffice_from t (goal_tree_to_semantic_tree newg) (goal_tree_to_semantic_tree oldg) 
-| goal_tree.willdefine ne (goal_info.mk a newg) (goal_info.mk b oldg) := semantic_tree.let_from (goal_tree_to_semantic_tree newg) (goal_tree_to_semantic_tree oldg) 
+| goal_tree.intro (n, e) gi := semantic_tree.assume_prop e $ goal_info_to_semantic_tree gi
+| goal_tree.have_ ⟨n,t,k,v⟩ gi  := semantic_tree.have_exact t $ goal_info_to_semantic_tree gi
+| goal_tree.define edef eval gi  := semantic_tree.assume_val edef eval $ goal_info_to_semantic_tree gi
+| goal_tree.willhave ⟨n,t,k⟩ (goal_info.mk _ $ goal_tree.triv _) oldg := semantic_tree.have_triv t (goal_info_to_semantic_tree oldg) 
+| goal_tree.willhave ne newg oldg := semantic_tree.have_from (goal_info_to_semantic_tree newg) (goal_info_to_semantic_tree oldg) 
+| goal_tree.suffice ⟨n,t,k⟩ newg oldg := semantic_tree.suffice_from t (goal_info_to_semantic_tree newg) (goal_info_to_semantic_tree oldg) 
+| goal_tree.willdefine ne newg oldg := semantic_tree.let_from (goal_info_to_semantic_tree newg) (goal_info_to_semantic_tree oldg) 
 | goal_tree.done := semantic_tree.unresolved
 | goal_tree.exact e:= semantic_tree.exact e
 | goal_tree.triv g:= semantic_tree.trivial
-| goal_tree.existsi e (goal_info.mk a g) := semantic_tree.assume_exist e $ goal_tree_to_semantic_tree g
+| goal_tree.existsi e gi := semantic_tree.assume_exist e $ goal_info_to_semantic_tree gi
 | goal_tree.assumption e:= semantic_tree.exact e
-| goal_tree.contra (goal_info.mk a g):= semantic_tree.contra $ goal_tree_to_semantic_tree g
+| goal_tree.contra gi:= semantic_tree.contra $ goal_info_to_semantic_tree gi
 | goal_tree.rewrite g:= semantic_tree.unresolved
 | goal_tree.simp2 ln g:= semantic_tree.unresolved
 | goal_tree.simp g:= semantic_tree.unresolved
-| goal_tree.skip  (goal_info.mk a g):= goal_tree_to_semantic_tree g
+| goal_tree.skip gi:= goal_info_to_semantic_tree gi
 | goal_tree.apply ee gl := match ee with
-    | `(Exists.intro %%n) := 
+    | `(Exists.intro %%n) := match ti with | ⟨`(Exists %%d),_⟩ := if (expr.binding_name d) = expr.local_pp_name n then goal_info_to_semantic_tree gl.head else semantic_tree.trivial |_:= semantic_tree.trivial end
     |_ :=semantic_tree.unresolved
   end
 | goal_tree.case gl := semantic_tree.unresolved
 | goal_tree.andthen gl l:= semantic_tree.unresolved
-| goal_tree.init (goal_info.mk a g) := semantic_tree.init $ goal_tree_to_semantic_tree g
+| goal_tree.init gi := semantic_tree.init $ goal_info_to_semantic_tree gi
 end
 #check ([1,1] ++ [1,2] )++ [3,2]
 meta def join_expr (ts:tactic string) (e:expr ): tactic string :=
@@ -121,7 +134,7 @@ let goal_tree_to_string3: goal_info → tactic string := λ gi, match gi with go
 | goal_tree.admit := !"sorry"
 | goal_tree.intro (n, e) g := !"INTRO " +S+ to_string n +S+ ":" +E+ e +S+ "(" +T+ (goal_tree_to_string2 g) +S+ ")"
 | goal_tree.have_ ⟨name, type, kind, val⟩ g := !"have " +E+ type +S+ "by <"+E+ val +S+ ">and<" +T+ (goal_tree_to_string2 g) +S+ ">"
-| goal_tree.define edef eval g := !"let "+E+ edef +S+" := " +E+ eval +S+ ">and<" +T+ (goal_tree_to_string2 g) +S+ ">"
+| goal_tree.define edef eval g := !"let "+E+ edef +S+" := <" +E+ eval +S+ ">and<" +T+ (goal_tree_to_string2 g) +S+ ">"
 | goal_tree.willhave ⟨name, type, kind⟩ newg oldg := !"will have " +E+ type +S+" from<" +T+ (goal_tree_to_string2 newg) +S+ ">and<" +T+ (goal_tree_to_string2 oldg) +S+ ">"
 | goal_tree.suffice ⟨name, type, kind⟩ newg oldg := !"suffice " +E+ type +S+" from<" +T+ (goal_tree_to_string2 newg) +S+ ">and<" +T+ (goal_tree_to_string2 oldg) +S+ ">"
 | goal_tree.willdefine e newg oldg := !"will let" +E+ e +S+ "by<" +T+ (goal_tree_to_string2 newg) +S+ ">and<" +T+ (goal_tree_to_string2 oldg) +S+ ">"
@@ -148,7 +161,7 @@ str +S+ "]"
 | goal_tree.init g := !"init[" +T+ goal_tree_to_string2 g +S+ "]"
 
 | goal_tree.andthen tac1 tac2 :=
-let str1 := goal_tree_to_string tac1 in
+let str1 := goal_tree_to_string2 tac1 in
 let sl := @list.map (expr × goal_info) (tactic string) (λ p, let (a, b) := p in !"("+E+a +S+" → " +T+(goal_tree_to_string2 b)+S+")") tac2 in
 let str := list.foldl (λ acc s, acc +S+", "+T+ s) (!"do {"+T+str1+S+"} and then{") sl in
 str +S+ "}"
@@ -161,8 +174,13 @@ meta def for_andthen : goal_tree → goal_tree :=
 end
 meta def goal_tree_to_format : goal_tree → tactic format :=
 λ g, do str ← goal_tree_to_string g,return $ to_fmt str
-meta def goal_tree_to_format2 : goal_tree → tactic format :=
-λ g, return $ to_fmt $ list.map S_ja $ tolistS $ goal_tree_to_semantic_tree $ g
-meta instance : has_to_tactic_format goal_tree :=
-⟨goal_tree_to_format⟩
+meta def goal_info_to_format : goal_info → tactic format :=
+λ g, match g with goal_info.mk te gt :=  do str ← goal_tree_to_string gt,
+return $ to_fmt str
+
+end
+meta def goal_info_to_format2 : goal_info → tactic format :=
+λ g, return $ to_fmt $ list.map S_ja $ tolistS $ goal_info_to_semantic_tree $ g
+meta instance : has_to_tactic_format goal_info :=
+⟨goal_info_to_format⟩
 

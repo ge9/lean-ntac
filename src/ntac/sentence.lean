@@ -9,6 +9,7 @@ with S : Type
 | Expr : expr → S
 | PredVP : NP → VP → S
 | _trivial : S
+| _unresolved : S
 | Imp : VP → S
 with NP : Type
 | EmbedS : S → NP
@@ -32,6 +33,7 @@ with Adv : Type
 | _from : NP → Adv
 | _hence : Adv
 | _from_assum : Adv
+| _trivially : Adv
 infix `/a/`:140 := S.AdvS
 infix `/aa/`:140 := S.AdvS'
 infix `/p/`:160 := S.PredVP
@@ -40,7 +42,7 @@ infix `/s/`:150 := Adv.Subjs
 prefix `<eNP>`:200 := λ e, NP.EmbedS (S.Expr e)
 prefix `<eN>`:200 := N.Expr
 prefix `<NP>`:190 := NP.UseN
-prefix `<S>`:200 := S.Expr
+prefix `<eS>`:200 := S.Expr
 prefix `<VVP>`:300 := VP.UseV
 prefix `<V2VP>`:300 := VP.UseV2
 prefix `<V3VP>`:300 := VP.UseV3
