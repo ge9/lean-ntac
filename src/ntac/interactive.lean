@@ -143,7 +143,7 @@ rewrite q l cfg >> try assumption
 
 meta def apply_mycore (e : expr) (cfg : apply_cfg := {}) : ntac (list (name × expr)) := 
 do tg ← getgoal1,
-  goals ← # tactic.apply e,
+  goals ← # tactic.apply e cfg,
   glist ← get_goal_tree_expr_list goals,
   replc_ntac tg $ goal_tree.apply e glist,
   return goals
@@ -166,9 +166,8 @@ meta def by_cases : parse cases_arg_p → ntac unit
 --# tactic.rsimp,tg2 ← getgoal1,replc_ntac tg $ goal_tree.simp $ goal_tree.unres tg2
 
 @[inline] meta def readmy : ntac format :=
-λ s, 
-let (tac, str) := s in
-result.success (to_fmt str) s
+do gt ← get_goal_tree,
+# pp gt
 
 @[inline] meta def read2 : ntac tactic_state :=
 λ s, let (tac, str) := s in
@@ -184,6 +183,9 @@ meta def trace_goals : ntac unit :=
 do gs ← # get_goals,
   let gs_str := list.map to_string gs,
   trace $ string.join gs_str
+meta def trace_proof : ntac unit := 
+do gt ← get_goal_tree,
+trace $ goal_tree_to_format2 gt
 
 meta def trace_state : ntac unit := 
 do s ← readmy,
@@ -191,10 +193,14 @@ do s ← readmy,
    trace $ s ++ "\n------\n" ++ (to_fmt s2)
 meta def aua := trace "fg"
 meta def trace_state2 : ntac unit := henkan tactic.interactive.trace_state
+private meta def target' : tactic expr :=
+target >>= instantiate_mvars >>= whnf
 
 meta def split : ntac unit :=
 do tg ← getgoal1,
-goals ← # tactic.split,
+[c] ← # target' >>= get_constructors_for | fail "split tactic failed, target is not an inductive datatype with only one constructor",
+  k ← # mk_const c,
+goals ← apply_mycore k,
 glist ← get_goal_tree_expr_list goals,
 let goal_tree_new := goal_tree.apply tg glist in 
 do replc_ntac tg goal_tree_new,
@@ -357,9 +363,6 @@ end
 meta def «let» (h : parse ident?) (q₁ : parse (tk ":" *> texpr)?) (q₂ : parse $ (tk ":=" *> texpr)?) : ntac unit :=
 do e ← let_aux h q₁ q₂, skip
 
-private meta def target' : tactic expr :=
-target >>= instantiate_mvars >>= whnf
-
 private meta def apply_num_metavars : expr → expr → nat → tactic expr
 | f ftype 0     := return f
 | f ftype (n+1) := do
@@ -382,7 +385,7 @@ do tg ← getgoal1,
    t_type  ← # infer_type t >>= whnf,
    e_type  ← # infer_type e,
    (guard t_type.is_pi <|> fail "existsi tactic failed, failed to infer type"),
-   (henkan (unify t_type.binding_domain e_type) <|> fail "existsi tactic failed, type mismatch between given term witness and expected type"),
+   henkan (unify t_type.binding_domain e_type) <|> fail "existsi tactic failed, type mismatch between given term witness and expected type",
    skip
    --,replc_ntac tg $ goal_tree.existsi e $ goal_tree.unres tg
 

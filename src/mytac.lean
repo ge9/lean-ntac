@@ -64,7 +64,7 @@ begin[ntac] trace_state, skiptgt, split;{trace_state, assumption,trace_state},tr
 example (p q : Prop) (hp : p) (hq : q) : p ∧ q :=
 begin[ntac] split,trace_state, assumption,trace_state,assumption,trace_state end
 example (p q : Prop) (hc : p) (hqw : q) : p ∧ q :=
-begin[ntac] split,trace_state,rotate_left 1, trace_state,assumption,trace_state,assumption,trace_state end
+begin[ntac] existsi hc,trace_state,rotate_left 1, trace_state,assumption,trace_state end
 
 
 

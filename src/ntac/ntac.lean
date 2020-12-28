@@ -1,30 +1,18 @@
 import ntac.goal_tree
 -- @[reducible] meta def ntac := tactic
-def mkprf := list string → string
-meta def test (o: interaction_monad string (list string)): interaction_monad string string :=
-do sdt::_ ← o,
-let s := sdt in
-return s
 
-meta def initgoals (gl: list expr): mkprf := 
-λ lst1, 
-let lst := list.zip_with (λ a b, to_string a ++ "\n" ++ b) gl lst1 in
-let gls := list.foldl (λ a b, a ++ "\n" ++ b) "initial goals:" lst in
-gls
-
-@[reducible] meta def ntac := interaction_monad (tactic_state × goal_tree)
+@[reducible] meta def ntac := interaction_monad (tactic_state × goal_info)
 
 open tactic----------------------------------------------------------------------------------------------------------------------------------------------------
 namespace ntac
 
 meta def henkan {α} (t: tactic α): ntac α :=
 λ ts,
-let tac := ts.1 in 
+let (tac, str) := ts in 
 let res := t tac in
-let str := ts.2 in
 match res with 
-| (result.success a s)       := (result.success a (s, str)) 
-| (result.exception t ref s) := (result.exception t ref (s,goal_tree.admit))
+| (result.success a s)       := (result.success a (s,str)) 
+| (result.exception t ref s) := (result.exception t ref (s,str))
 end
 
 meta def henkan_inv {α} (t: ntac α) : tactic α :=
@@ -35,28 +23,28 @@ let info := type_info.mk type kind in
 let goaltree := goal_tree.unres g in
 let goal_info2 := goal_info.mk info goaltree in
 λ sa,
-let res := t (sa, goal_tree.init goal_info2) in
+let res := t (sa, goal_info2) in
 match res with 
 | (result.success a s)       := (result.success a s.1) 
 | (result.exception t ref s) := (result.exception t ref s.1)
 end
 
-meta def change_goal_tree (f:goal_tree → goal_tree) : ntac unit := 
+meta def change_goal_info (f:goal_info → goal_info) : ntac unit := 
 λ sa,
 let (tst, str) := sa in
 result.success () (tst, f str)
 
-meta def set_goal_tree (g: goal_tree) : ntac unit :=
+meta def set_goal_info (g: goal_info) : ntac unit :=
 λ sa,
 let (tst, _) := sa in
 result.success () (tst, g)
 
-meta def get_goal_tree: ntac goal_tree := 
+meta def get_goal_info: ntac goal_info := 
 λ sa,
 let (tst, str) := sa in result.success str (tst, str)
 
-meta def replc_ntac (e:expr) (g: goal_tree) := change_goal_tree $ replc_unres e g
-meta def replc_head (e:expr) (g: goal_tree) := change_goal_tree $ replc_unres e g
+meta def replc_ntac (e:expr) (g: goal_info) := change_goal_info $ replc_unres e g
+meta def replc_head (e:expr) (g: goal_info) := change_goal_info $ replc_unres e g
 
 meta instance : interactive.executor ntac :=
 { config_type := unit,
@@ -70,23 +58,15 @@ meta instance : alternative ntac :=
 { failure := @interaction_monad.failed _,
   orelse  := @interaction_monad_orelse _,
   ..interaction_monad.monad }
---meta instance : monad ntac := by delta ntac; apply_instance
 
---meta instance : alternative ntac := by delta ntac; apply_instance
-
-meta def step {α} (c : ntac α) : ntac unit := 
-do gs ← henkan get_goals,
-c >>return ()
---c >> adddd ("\n<"++gs.to_string++">\n") ()
+meta def step {α} (c : ntac α) : ntac unit := do gs ← henkan get_goals,c >>return ()
 
 meta def istep {α} (line0 col0 : ℕ) (line col : ℕ) (t : ntac α) : ntac unit :=
 λ s, (@scope_trace _ line col (λ _, step t s)).clamp_pos line0 line col
 
-meta def save_info (p : pos) : ntac unit :=
-henkan $ tactic.save_info p
+meta def save_info (p : pos) : ntac unit := henkan $ tactic.save_info p
  
-meta def execute (c : ntac unit) : ntac unit := 
-c
+meta def execute (c : ntac unit) : ntac unit := c
 
 meta def fail {α} {β} [has_to_format β] (msg : β) : ntac α :=
   interaction_monad.fail msg
@@ -95,9 +75,7 @@ meta def first {α} : list (ntac α) → ntac α
 | (t::ts) := t <|> first ts
 
 meta def solve1 {α} (tac : ntac α) : ntac α :=
-do 
---aa::as ← pure ([] : list string),
-gs ← henkan get_goals,
+do gs ← henkan get_goals,
    match gs with
    | []      := fail "solve1 tactic failed, there isn't any goal left to focus"
    | (g::rs) :=

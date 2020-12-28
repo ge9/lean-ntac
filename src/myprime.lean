@@ -60,15 +60,15 @@ trace_state,
   from  prime.not_dvd_one pp h₂,
 },
 T,{assumption}
-,trace_state
+,trace_proof
 end
 
 theorem exists_infinite_primes5 (n : ℕ) : ∃ p, n ≤ p ∧ prime p :=
-begin[ntac]
+begin
 let p := min_fac (n! + 1),trace_state,
 existsi p,trace_state,
   have f1 : n! + 1 ≠ 1,
-  trace_state,
+  trace_state, trace "fg",
   from (ne_of_gt $ succ_lt_succ $ factorial_pos n),
   trace_state,
   suffices hh: n ≤ p, from ⟨hh, min_fac_prime f1⟩,
