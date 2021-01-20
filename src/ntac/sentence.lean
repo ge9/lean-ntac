@@ -6,7 +6,7 @@ meta mutual inductive S, NP, N, VP, V, V2, V3, Subj, Adv
 with S : Type
 | AdvS : Adv → S → S
 | AdvS' : S → Adv → S
-| Expr : expr → S
+| Expr : string → S
 | PredVP : NP → VP → S
 | _trivial : S
 | _unresolved : S
@@ -15,7 +15,7 @@ with NP : Type
 | EmbedS : S → NP
 | UseN : N → NP
 with N: Type
-| Expr : expr → N
+| Expr : string → N
 with VP : Type
 | UseV : V → VP
 | UseV2 : V2 → NP → VP

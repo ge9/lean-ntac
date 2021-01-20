@@ -58,11 +58,11 @@ begin[ntac] trace_state, skiptgt, trace_state, split; assumption, trace_state en
 example (p q : Prop) (hp : p) (hq : q) : p ∧ q :=
 begin trace_state, trace_state, split; assumption, trace_state end
 example (p q : Prop) (hp : p) (hq : q) : p ∧ q :=
-begin[ntac] trace_state, skiptgt, split;{trace_state, assumption,trace_state},trace_state end
+begin[ntac] trace_state, split;{trace_state, assumption,trace_state},trace_proof end
 
 
 example (p q : Prop) (hp : p) (hq : q) : p ∧ q :=
-begin[ntac] split,trace_state, assumption,trace_state,assumption,trace_state end
+begin[ntac] split,trace_state, assumption,trace_state,assumption,trace_state,trace_proof  end
 example (p q : Prop) (hc : p) (hqw : q) : p ∧ q :=
 begin[ntac] existsi hc,trace_state,rotate_left 1, trace_state,assumption,trace_state end
 
@@ -71,11 +71,11 @@ begin[ntac] existsi hc,trace_state,rotate_left 1, trace_state,assumption,trace_s
 example (a b c : nat) (h_1 : a = g b) (h_2 : a = b) : p (f (g a) a) b :=
 begin[ntac] trace_state, rsimp, trace_state, apply pax, trace_state end
 
-example (a b c : nat) (h_1 : a = g b) (h_2 : a = b) : p (f (g a) a) b :=
-begin   rsimp; trace_state, apply pax end
+-- example (a b c : nat) (h_1 : a = g b) (h_2 : a = b) : p (f (g a) a) b :=
+-- begin   rsimp; trace_state, apply pax end
 
-example (a b c : nat) (h_1 : a = g b) (h_2 : a = b) : p (f (g a) a) b :=
-begin   rsimp; apply pax end
-def c := tt
-def d := tt
+-- example (a b c : nat) (h_1 : a = g b) (h_2 : a = b) : p (f (g a) a) b :=
+-- begin   rsimp; apply pax end
+-- def c := tt
+-- def d := tt
 #reduce (``(c∧d))

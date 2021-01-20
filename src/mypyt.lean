@@ -33,7 +33,7 @@ def pythagorean_triple (x y z : ℤ) : Prop := x * x + y * y = z * z
 This comes from additive commutativity. -/
 lemma pythagorean_triple_comm {x y z : ℤ} :
  (pythagorean_triple x y z) ↔ (pythagorean_triple y x z) :=
-begin[ntac] delta pythagorean_triple, rw add_comm, trace_state end
+begin[ntac] delta pythagorean_triple,rw add_comm, trace_state end
 
 /-- The zeroth Pythagorean triple is all zeros. -/
 lemma pythagorean_triple.zero : pythagorean_triple 0 0 0 :=

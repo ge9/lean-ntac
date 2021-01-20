@@ -4,7 +4,7 @@ meta mutual def S_ja,NP_ja, N_ja, VP_ja, V_ja, V2_ja, V3_ja, Subj_ja, Adv_ja
 with S_ja : S → string
 | (S.AdvS adv s) := Adv_ja adv ++ "、" ++ S_ja s
 | (S.AdvS' s adv) := Adv_ja adv ++ "、" ++ S_ja s
-| (S.Expr e) := e.to_string
+| (S.Expr e) := e
 | (S.PredVP np vp) := NP_ja np ++ "は" ++ VP_ja vp
 | S._trivial := "自明"
 | S._unresolved := "未解決"
@@ -13,7 +13,7 @@ with NP_ja : NP → string
 | (NP.EmbedS s) := S_ja s ++ "であること"
 | (NP.UseN n) := N_ja n
 with N_ja: N → string
-| (N.Expr e) := e.to_string
+| (N.Expr e) := e
 with VP_ja : VP → string
 | (VP.UseV v) := V_ja v
 | (VP.UseV2 v2 np) := NP_ja np ++ "を" ++ V2_ja v2

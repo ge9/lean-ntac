@@ -3,7 +3,7 @@ import ntac.goal_tree
 
 @[reducible] meta def ntac := interaction_monad (tactic_state × goal_info)
 
-open tactic----------------------------------------------------------------------------------------------------------------------------------------------------
+open tactic
 namespace ntac
 
 meta def henkan {α} (t: tactic α): ntac α :=

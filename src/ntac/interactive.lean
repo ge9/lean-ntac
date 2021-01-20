@@ -212,8 +212,7 @@ do replc_ntac tg goal_tree_new,
   concat_tags $ return goals
 
 meta def intro2_core (tg:expr) (n : name) : ntac expr :=
-do trace tg,
- e ← # intro_core n,
+do e ← # intro_core n,
  te ← # infer_type e,
  ng ← getgoalinfo1,
  --set_goal_tree $ goal_tree.intro (n, te) ng,
